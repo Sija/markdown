@@ -170,7 +170,7 @@ class MarkdownParser
         $this->titles = $this->predef_titles;
         $this->html_hashes = array();
 
-        $in_anchor = false;
+        $this->in_anchor = false;
     }
 
     protected function teardown()
@@ -598,7 +598,6 @@ class MarkdownParser
 
     protected function _doAnchors_inline_callback($matches)
     {
-        $whole_match = $matches[1];
         $link_text = $this->runSpanGamut($matches[2]);
         $url = $matches[3] == '' ? $matches[4] : $matches[3];
         $title = & $matches[7];
@@ -711,7 +710,6 @@ class MarkdownParser
 
     protected function _doImages_inline_callback($matches)
     {
-        $whole_match = $matches[1];
         $alt_text = $matches[2];
         $url = $matches[3] == '' ? $matches[4] : $matches[3];
         $title = & $matches[7];
@@ -789,7 +787,6 @@ class MarkdownParser
         # Re-usable patterns to match list item bullets and number markers:
         $marker_ul_re = '[*+-]';
         $marker_ol_re = '\d+[.]';
-        $marker_any_re = "(?:$marker_ul_re|$marker_ol_re)";
 
         $markers_relist = array(
             $marker_ul_re => $marker_ol_re,
@@ -854,12 +851,11 @@ class MarkdownParser
         # Re-usable patterns to match list item bullets and number markers:
         $marker_ul_re = '[*+-]';
         $marker_ol_re = '\d+[.]';
-        $marker_any_re = "(?:$marker_ul_re|$marker_ol_re)";
 
         $list = $matches[1];
-        $list_type = preg_match("/$marker_ul_re/", $matches[4]) ? "ul" : "ol";
+        $list_type = preg_match("/$marker_ul_re/", $matches[4]) ? 'ul' : 'ol';
 
-        $marker_any_re = ( $list_type == "ul" ? $marker_ul_re : $marker_ol_re );
+        $marker_any_re = $list_type == 'ul' ? $marker_ul_re : $marker_ol_re;
 
         $list .= "\n";
         $result = $this->processListItems($list, $marker_any_re);

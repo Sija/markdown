@@ -5,8 +5,24 @@
  */
 class MarkdownExtraParser extends MarkdownParser
 {
-    # Prefix for footnote ids.
+    ### HTML Block Parser ###
+    
+    # Tags that are always treated as block tags:
+    public $block_tags_re = 'p|div|h[1-6]|blockquote|pre|table|dl|ol|ul|address|form|fieldset|iframe|hr|legend';
+    
+    # Tags treated as block tags only if the opening tag is alone on it's line:
+    public $context_block_tags_re = 'script|noscript|math|ins|del';
+    
+    # Tags where markdown="1" default to span mode:
+    public $contain_span_tags_re = 'p|h[1-6]|li|dd|dt|td|th|legend|address';
+    
+    # Tags which must not have their contents modified, no matter where they appear:
+    public $clean_tags_re = 'script|math';
+    
+    # Tags that do not need to be closed.
+    public $auto_close_tags_re = 'hr|img';
 
+    # Prefix for footnote ids.
     protected $fn_id_prefix = '';
 
     # Optional title attribute for footnote links and backlinks.
@@ -28,6 +44,9 @@ class MarkdownExtraParser extends MarkdownParser
 
     # Give the current footnote number.
     protected $footnote_counter = 1;
+    
+    # span|block
+    protected $mode = '';
 
     public function __construct()
     {
@@ -41,19 +60,19 @@ class MarkdownExtraParser extends MarkdownParser
         # Insert extra document, block, and span transformations.
         # Parent constructor will do the sorting.
         $this->document_gamut += array(
-            "doFencedCodeBlocks" => 5,
-            "stripFootnotes" => 15,
-            "stripAbbreviations" => 25,
-            "appendFootnotes" => 50,
+            'doFencedCodeBlocks' => 5,
+            'stripFootnotes' => 15,
+            'stripAbbreviations' => 25,
+            'appendFootnotes' => 50,
         );
         $this->block_gamut += array(
-            "doFencedCodeBlocks" => 5,
-            "doTables" => 15,
-            "doDefLists" => 45,
+            'doFencedCodeBlocks' => 5,
+            'doTables' => 15,
+            'doDefLists' => 45,
         );
         $this->span_gamut += array(
-            "doFootnotes" => 5,
-            "doAbbreviations" => 70,
+            'doFootnotes' => 5,
+            'doAbbreviations' => 70,
         );
 
         parent::__construct();
@@ -93,24 +112,6 @@ class MarkdownExtraParser extends MarkdownParser
 
         parent::teardown();
     }
-
-    ### HTML Block Parser ###
-    # Tags that are always treated as block tags:
-
-    var $block_tags_re = 'p|div|h[1-6]|blockquote|pre|table|dl|ol|ul|address|form|fieldset|iframe|hr|legend';
-
-    # Tags treated as block tags only if the opening tag is alone on it's line:
-    var $context_block_tags_re = 'script|noscript|math|ins|del';
-
-    # Tags where markdown="1" default to span mode:
-    var $contain_span_tags_re = 'p|h[1-6]|li|dd|dt|td|th|legend|address';
-
-    # Tags which must not have their contents modified, no matter where
-    # they appear:
-    var $clean_tags_re = 'script|math';
-
-    # Tags that do not need to be closed.
-    var $auto_close_tags_re = 'hr|img';
 
     protected function hashHTMLBlocks($text)
     {
@@ -223,7 +224,7 @@ class MarkdownExtraParser extends MarkdownParser
 
 
         $depth = 0;  # Current depth inside the tag tree.
-        $parsed = ""; # Parsed text that will be returned.
+        $parsed = ''; # Parsed text that will be returned.
         #
         # Loop through every tag until we find the closing tag of the parent
         # or loop until reaching the end of text if no parent tag specified.
@@ -236,23 +237,22 @@ class MarkdownExtraParser extends MarkdownParser
             # pattern will be at the end, and between will be any catches made
             # by the pattern.
             #
-            $parts = preg_split($block_tag_re, $text, 2,
-            PREG_SPLIT_DELIM_CAPTURE);
+            $parts = preg_split($block_tag_re, $text, 2, PREG_SPLIT_DELIM_CAPTURE);
 
             # If in Markdown span mode, add a empty-string span-level hash
             # after each newline to prevent triggering any block element.
             if ($span)
             {
-                $void = $this->hashPart("", ':');
+                $void = $this->hashPart('', ':');
                 $newline = "$void\n";
                 $parts[0] = $void.str_replace("\n", $newline, $parts[0]).$void;
             }
-
             $parsed .= $parts[0]; # Text before current tag.
+
             # If end of $text has been reached. Stop loop.
             if (count($parts) < 3)
             {
-                $text = "";
+                $text = '';
                 break;
             }
 
@@ -262,12 +262,11 @@ class MarkdownExtraParser extends MarkdownParser
             #
             # Check for: Code span marker
             #
-            if ($tag{0} == "`")
+            if ($tag{0} == '`')
             {
                 # Find corresponding end marker.
                 $tag_re = preg_quote($tag);
-                if (preg_match('{^(?>.+?|\n(?!\n))*?(?<!`)'.$tag_re.'(?!`)}',
-                $text, $matches))
+                if (preg_match('{^(?>.+?|\n(?!\n))*?(?<!`)'.$tag_re.'(?!`)}', $text, $matches))
                 {
                     # End marker found: pass text unchanged until marker.
                     $parsed .= $tag.$matches[0];
@@ -282,7 +281,7 @@ class MarkdownExtraParser extends MarkdownParser
             #
             # Check for: Indented code block.
             #
-            else if ($tag{0} == "\n" || $tag{0} == " ")
+            else if ($tag{0} == "\n" || $tag{0} == ' ')
             {
                 # Indented code block: pass it unchanged, will be handled
                 # later.
@@ -291,12 +290,11 @@ class MarkdownExtraParser extends MarkdownParser
             #
             # Check for: Fenced code block marker.
             #
-            else if ($tag{0} == "~")
+            else if ($tag{0} == '~')
             {
                 # Fenced code block marker: find matching end marker.
                 $tag_re = preg_quote(trim($tag));
-                if (preg_match('{^(?>.*\n)+?'.$tag_re.' *\n}', $text,
-                $matches))
+                if (preg_match('{^(?>.*\n)+?'.$tag_re.' *\n}', $text, $matches))
                 {
                     # End marker found: pass text unchanged until marker.
                     $parsed .= $tag.$matches[0];
@@ -321,7 +319,7 @@ class MarkdownExtraParser extends MarkdownParser
             {
                 # Need to parse tag and following text using the HTML parser.
                 list($block_text, $text) =
-                $this->_hashHTMLBlocks_inHTML($tag.$text, "hashBlock", true);
+                $this->_hashHTMLBlocks_inHTML($tag.$text, 'hashBlock', true);
 
                 # Make sure it stays outside of any paragraph by adding newlines.
                 $parsed .= "\n\n$block_text\n\n";
@@ -336,7 +334,7 @@ class MarkdownExtraParser extends MarkdownParser
                 # Need to parse tag and following text using the HTML parser.
                 # (don't check for markdown attribute)
                 list($block_text, $text) =
-                $this->_hashHTMLBlocks_inHTML($tag.$text, "hashClean", false);
+                $this->_hashHTMLBlocks_inHTML($tag.$text, 'hashClean', false);
 
                 $parsed .= $block_text;
             }
@@ -434,8 +432,8 @@ class MarkdownExtraParser extends MarkdownParser
         $original_text = $text;  # Save original text in case of faliure.
 
         $depth = 0; # Current depth inside the tag tree.
-        $block_text = ""; # Temporary text holder for current text.
-        $parsed = ""; # Parsed text that will be returned.
+        $block_text = ''; # Temporary text holder for current text.
+        $parsed = ''; # Parsed text that will be returned.
         #
         # Get the name of the starting tag.
         # (This pattern makes $base_tag_name_re safe without quoting.)
@@ -507,7 +505,7 @@ class MarkdownExtraParser extends MarkdownParser
                     # Check if text inside this tag must be parsed in span mode.
                     $this->mode = $attr_m[2].$attr_m[3];
                     $span_mode = $this->mode == 'span' || $this->mode != 'block' &&
-                    preg_match('{^<(?:'.$this->contain_span_tags_re.')\b}', $tag);
+                        preg_match('{^<(?:'.$this->contain_span_tags_re.')\b}', $tag);
 
                     # Calculate indent before tag.
                     if (preg_match('/(?:^|\n)( *?)(?! ).*?$/', $block_text, $matches))
@@ -537,7 +535,7 @@ class MarkdownExtraParser extends MarkdownParser
                     # Outdent markdown text.
                     if ($indent > 0)
                     {
-                        $block_text = preg_replace("/^[ ]{1,$indent}/m", "",
+                        $block_text = preg_replace("/^[ ]{1,$indent}/m", '',
                         $block_text);
                     }
 
@@ -548,7 +546,7 @@ class MarkdownExtraParser extends MarkdownParser
                         $parsed .= "$block_text";
 
                     # Start over a new block.
-                    $block_text = "";
+                    $block_text = '';
                 }
                 else
                     $block_text .= $tag;
@@ -618,7 +616,7 @@ class MarkdownExtraParser extends MarkdownParser
     protected function _doHeaders_attr($attr)
     {
         if (empty($attr))
-            return "";
+            return '';
         return " id=\"$attr\"";
     }
 
@@ -728,6 +726,7 @@ class MarkdownExtraParser extends MarkdownParser
 
         # Reading alignement from header underline.
         $separators = preg_split('/ *[|] */', $underline);
+        $attr = array();
         foreach ($separators as $n => $s)
         {
             if (preg_match('/^ *-+: *$/', $s))
@@ -925,8 +924,6 @@ class MarkdownExtraParser extends MarkdownParser
         # Code block
         # ~~~
         #
-        $less_than_tab = $this->tab_width;
-
         $text = preg_replace_callback('{
 				(?:\n|\A)
 				# 1: Opening marker
@@ -1174,9 +1171,9 @@ class MarkdownExtraParser extends MarkdownParser
             $node_id = $this->encodeAttribute($node_id);
 
             return
-            "<sup id=\"fnref:$node_id\">".
-            "<a href=\"#fn:$node_id\"$attr>$num</a>".
-            "</sup>";
+                "<sup id=\"fnref:$node_id\">".
+                "<a href=\"#fn:$node_id\"$attr>$num</a>".
+                "</sup>";
         }
 
         return "[^".$matches[1]."]";
