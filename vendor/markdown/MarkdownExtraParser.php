@@ -6,19 +6,19 @@
 class MarkdownExtraParser extends MarkdownParser
 {
     ### HTML Block Parser ###
-    
+
     # Tags that are always treated as block tags:
-    public $block_tags_re = 'p|div|h[1-6]|blockquote|pre|table|dl|ol|ul|address|form|fieldset|iframe|hr|legend';
-    
+    public $block_tags_re = 'p|div|h[1-6]|blockquote|pre|table|dl|ol|ul|address|form|fieldset|iframe|hr|legend|header|section|article|figure|figcaption|footer|nav';
+
     # Tags treated as block tags only if the opening tag is alone on it's line:
     public $context_block_tags_re = 'script|noscript|math|ins|del';
-    
+
     # Tags where markdown="1" default to span mode:
     public $contain_span_tags_re = 'p|h[1-6]|li|dd|dt|td|th|legend|address';
-    
+
     # Tags which must not have their contents modified, no matter where they appear:
     public $clean_tags_re = 'script|math';
-    
+
     # Tags that do not need to be closed.
     public $auto_close_tags_re = 'hr|img';
 
@@ -44,7 +44,7 @@ class MarkdownExtraParser extends MarkdownParser
 
     # Give the current footnote number.
     protected $footnote_counter = 1;
-    
+
     # span|block
     protected $mode = '';
 
@@ -397,9 +397,9 @@ class MarkdownExtraParser extends MarkdownParser
 				markdown
 				\s*=\s*
 				(?>
-					(["\'])		# $1: quote delimiter		
+					(["\'])		# $1: quote delimiter
 					(.*?)		# $2: attribute value
-					\1			# matching delimiter	
+					\1			# matching delimiter
 				|
 					([^\s>]*)	# $3: unquoted attribute value
 				)
@@ -658,10 +658,10 @@ class MarkdownExtraParser extends MarkdownParser
 				[ ]{0,'.$less_than_tab.'}	# Allowed whitespace.
 				[|]							# Optional leading pipe (present)
 				(.+) \n						# $1: Header row (at least one pipe)
-				
+
 				[ ]{0,'.$less_than_tab.'}	# Allowed whitespace.
 				[|] ([ ]*[-:]+[-| :]*) \n	# $2: Header underline
-				
+
 				(							# $3: Cells
 					(?>
 						[ ]*				# Allowed whitespace.
@@ -685,10 +685,10 @@ class MarkdownExtraParser extends MarkdownParser
 				^							# Start of a line
 				[ ]{0,'.$less_than_tab.'}	# Allowed whitespace.
 				(\S.*[|].*) \n				# $1: Header row (at least one pipe)
-				
+
 				[ ]{0,'.$less_than_tab.'}	# Allowed whitespace.
 				([-:]+[ ]*[|][-| :]*) \n	# $2: Header underline
-				
+
 				(							# $3: Cells
 					(?>
 						.* [|] .* \n		# Row content
@@ -852,11 +852,11 @@ class MarkdownExtraParser extends MarkdownParser
 			(?>\A\n?|\n\n+)					# leading line
 			(								# definition terms = $1
 				[ ]{0,'.$less_than_tab.'}	# leading whitespace
-				(?![:][ ]|[ ])				# negative lookahead for a definition 
+				(?![:][ ]|[ ])				# negative lookahead for a definition
 											#   mark (colon) or more whitespace.
-				(?> \S.* \n)+?				# actual term (not whitespace).	
-			)			
-			(?=\n?[ ]{0,3}:[ ])				# lookahead for following line feed 
+				(?> \S.* \n)+?				# actual term (not whitespace).
+			)
+			(?=\n?[ ]{0,3}:[ ])				# lookahead for following line feed
 											#   with a definition mark.
 			}xm',
         array(&$this, '_processDefListItems_callback_dt'), $list_str);
@@ -873,8 +873,8 @@ class MarkdownExtraParser extends MarkdownParser
 				(?:							# next term or end of text
 					[ ]{0,'.$less_than_tab.'} [:][ ]	|
 					<dt> | \z
-				)						
-			)					
+				)
+			)
 			}xm',
         array(&$this, '_processDefListItems_callback_dd'), $list_str);
 
@@ -931,7 +931,7 @@ class MarkdownExtraParser extends MarkdownParser
 					~{3,} # Marker: three tilde or more.
 				)
 				[ ]* \n # Whitespace and newline following marker.
-				
+
 				# 2: Content
 				(
 					(?>
@@ -939,7 +939,7 @@ class MarkdownExtraParser extends MarkdownParser
 						.*\n+
 					)+
 				)
-				
+
 				# Closing marker.
 				\1 [ ]* \n
 			}xm',
@@ -1010,7 +1010,7 @@ class MarkdownExtraParser extends MarkdownParser
             {
                 $value = '<p>'.$value.'</p>';
             }
-            
+
             $grafs[$key] = $value;
         }
 
@@ -1039,15 +1039,15 @@ class MarkdownExtraParser extends MarkdownParser
 			  [ ]*
 			  \n?					# maybe *one* newline
 			(						# text = $2 (no blank lines allowed)
-				(?:					
+				(?:
 					.+				# actual text
 				|
-					\n				# newlines but 
+					\n				# newlines but
 					(?!\[\^.+?\]:\s)# negative lookahead for footnote marker.
-					(?!\n+[ ]{0,3}\S)# ensure line is not blank and followed 
+					(?!\n+[ ]{0,3}\S)# ensure line is not blank and followed
 									# by non-indented content
 				)*
-			)		
+			)
 			}xm',
         array(&$this, '_stripFootnotes_callback'),
         $text);
@@ -1191,7 +1191,7 @@ class MarkdownExtraParser extends MarkdownParser
         # Link defs are in the form: [id]*: url "optional title"
         $text = preg_replace_callback('{
 			^[ ]{0,'.$less_than_tab.'}\*\[(.+?)\][ ]?:	# abbr_id = $1
-			(.*)					# text = $2 (no blank lines allowed)	
+			(.*)					# text = $2 (no blank lines allowed)
 			}xm',
         array(&$this, '_stripAbbreviations_callback'),
         $text);
